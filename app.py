@@ -22,10 +22,17 @@ from flask import (
     session,
     url_for,
 )
+from flask_session import Session
 
 from database import get_connection, init_db
 
 app = Flask(__name__)
+
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_TYPE"] = "filesystem"
+
+Session(app)
+
 app.secret_key = "clave-insegura-de-laboratorio"  # MALA PRACTICA: clave debil y fija
 
 UPLOAD_FOLDER = "uploads"

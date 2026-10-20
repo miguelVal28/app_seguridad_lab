@@ -7,10 +7,6 @@
         <button type="submit">Buscar</button>
     </form>
 
-    {% if query %}
-        <p class="pista">SQL ejecutado: <code>{{ query }}</code></p>
-    {% endif %}
-
     {% if resultados %}
         <table>
             <tr><th>ID</th><th>Nombre</th><th>Carrera</th><th>Biografia</th><th>Acciones</th></tr>

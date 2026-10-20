@@ -214,4 +214,4 @@ if __name__ == "__main__":
     if not os.path.exists("academia.db"):
         init_db()
     # debug=True tambien es una mala practica en produccion (expone la consola)
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000)

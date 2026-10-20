@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS user (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE,
+    password TEXT
+
+)
+
+CREATE TABLE IF NOT EXISTS user_roles(
+    user_id INTEGER,
+    role_id INTEGER
+)

@@ -3,8 +3,8 @@ app.py  -  VERSION INTENCIONALMENTE VULNERABLE
 ==============================================
 Sistema de Gestion Academica para el laboratorio de S-SDLC.
 
-Este archivo contiene, A PROPOSITO, las 4 vulnerabilidades clasicas:
-  1. Inyeccion SQL (SQLi)            -> /login y /buscar
+Estado de las vulnerabilidades del laboratorio:
+  1. Inyeccion SQL (SQLi) mitigada   -> /login y /buscar parametrizados
   2. Cross-Site Scripting (XSS)      -> /perfil/<id>
   3. Control de acceso roto (IDOR)   -> /nota/editar/<id>
   4. Carga de archivos sin restriccion -> /subir
@@ -47,11 +47,11 @@ def inicio():
 
 
 # ======================================================================
-# VULNERABILIDAD 1: INYECCION SQL (SQLi)
+# SQLi MITIGADA: consulta parametrizada en el login
 # ======================================================================
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Inicio de sesion vulnerable a inyeccion SQL."""
+    """Inicio de sesion con consulta parametrizada."""
     error = None
     if request.method == "POST":
         usuario = request.form.get("username", "")
@@ -60,18 +60,11 @@ def login():
         conn = get_connection()
         cur = conn.cursor()
 
-        # VULNERABLE: la consulta se construye concatenando la entrada del
-        # usuario directamente. Un atacante puede escribir:  admin' --
-        # o tambien:  ' OR '1'='1
-        query = (
-            "SELECT * FROM usuarios WHERE username = '"
-            + usuario
-            + "' AND password = '"
-            + clave
-            + "'"
+        # Los parametros se interpretan como datos, no como codigo SQL.
+        cur.execute(
+            "SELECT * FROM usuarios WHERE username = ? AND password = ?",
+            (usuario, clave),
         )
-        print("SQL ejecutado:", query)  # para que el estudiante vea la inyeccion
-        cur.execute(query)
         fila = cur.fetchone()
         conn.close()
 
@@ -91,31 +84,27 @@ def logout():
 
 
 # ======================================================================
-# VULNERABILIDAD 1 (variante): SQLi en el buscador de estudiantes
+# SQLi MITIGADA: consulta parametrizada en el buscador de estudiantes
 # ======================================================================
 @app.route("/buscar")
 @login_required
 def buscar():
-    """Buscador de estudiantes vulnerable a inyeccion SQL."""
+    """Buscador de estudiantes con consulta parametrizada."""
     termino = request.args.get("q", "")
     resultados = []
-    query = ""
     if termino:
         conn = get_connection()
         cur = conn.cursor()
-        # VULNERABLE: se concatena el termino de busqueda en la consulta.
-        # Ejemplo de ataque con UNION para extraer usuarios y contrasenas:
-        #   ' UNION SELECT id, username, password, rol FROM usuarios --
+        # El patron LIKE se pasa como parametro separado de la consulta.
         query = (
             "SELECT id, nombre, carrera, biografia FROM estudiantes "
-            "WHERE nombre LIKE '%" + termino + "%'"
+            "WHERE nombre LIKE ?"
         )
-        print("SQL ejecutado:", query)
-        cur.execute(query)
+        cur.execute(query, (f"%{termino}%",))
         resultados = cur.fetchall()
         conn.close()
     return render_template(
-        "buscar.html", resultados=resultados, termino=termino, query=query
+        "buscar.html", resultados=resultados, termino=termino
     )
 
 

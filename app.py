@@ -24,8 +24,16 @@ from flask import (
 )
 
 from database import get_connection, init_db
+from flask_session import Session
+from session_manager import login_required
 
 app = Flask(__name__)
+
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_TYPE"] = "filesystem"
+
+Session(app)
+
 app.secret_key = "clave-insegura-de-laboratorio"  # MALA PRACTICA: clave debil y fija
 
 UPLOAD_FOLDER = "uploads"
@@ -86,6 +94,7 @@ def logout():
 # VULNERABILIDAD 1 (variante): SQLi en el buscador de estudiantes
 # ======================================================================
 @app.route("/buscar")
+@login_required
 def buscar():
     """Buscador de estudiantes vulnerable a inyeccion SQL."""
     termino = request.args.get("q", "")
@@ -113,14 +122,16 @@ def buscar():
 # ======================================================================
 # VULNERABILIDAD 2: CROSS-SITE SCRIPTING (XSS) ALMACENADO
 # ======================================================================
-@app.route("/perfil/<int:id>")
-def perfil(id):
+@app.route("/perfil/<int:user_id>", methods=["GET", "POST"])
+@login_required
+def perfil(user_id):
     """Muestra el perfil de un estudiante SIN escapar la biografia."""
+
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM estudiantes WHERE id = ?", (id,))
+    cur.execute("SELECT * FROM estudiantes WHERE id = ?", (user_id,))
     estudiante = cur.fetchone()
-    cur.execute("SELECT * FROM calificaciones WHERE estudiante_id = ?", (id,))
+    cur.execute("SELECT * FROM calificaciones WHERE estudiante_id = ?", (user_id,))
     notas = cur.fetchall()
     conn.close()
     if not estudiante:
@@ -131,6 +142,7 @@ def perfil(id):
 
 
 @app.route("/perfil/<int:id>/editar", methods=["GET", "POST"])
+@login_required
 def editar_biografia(id):
     """Permite editar la biografia (fuente del XSS almacenado)."""
     conn = get_connection()
@@ -154,6 +166,7 @@ def editar_biografia(id):
 # VULNERABILIDAD 3: CONTROL DE ACCESO ROTO (IDOR)
 # ======================================================================
 @app.route("/nota/editar/<int:id>", methods=["GET", "POST"])
+@login_required
 def editar_nota(id):
     """
     Edita una calificacion identificada por su ID en la URL.
@@ -183,6 +196,7 @@ def editar_nota(id):
 # VULNERABILIDAD 4: CARGA DE ARCHIVOS SIN RESTRICCION
 # ======================================================================
 @app.route("/subir", methods=["GET", "POST"])
+@login_required
 def subir():
     """Sube un archivo SIN validar extension ni tipo -> permite .py, .php, etc."""
     mensaje = None

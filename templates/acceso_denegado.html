@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Acceso denegado{% endblock %}
+{% block contenido %}
+<h1>Acceso denegado</h1>
+<p class="error">No tienes permisos para acceder a este recurso.</p>
+<p>Tu rol actual (<strong>{{ session.get('rol') }}</strong>) no esta autorizado para esta seccion.
+    Si crees que es un error, contacta al administrador del sistema.</p>
+<p><a href="{{ url_for('inicio') }}">Volver al inicio</a></p>
+{% endblock %}

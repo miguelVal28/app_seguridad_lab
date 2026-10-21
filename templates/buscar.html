@@ -16,7 +16,7 @@
                     <td>{{ r[1] }}</td>
                     <td>{{ r[2] }}</td>
                     <td>{{ r[3] }}</td>
-                    <td><a href="{{ url_for('perfil', id=r[0]) }}">Ver perfil</a></td>
+                    <td><a href="{{ url_for('perfil', user_id=r[0]) }}">Ver perfil</a></td>
                 </tr>
             {% endfor %}
         </table>

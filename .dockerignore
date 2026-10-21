@@ -1,0 +1,12 @@
+.git/
+.idea/
+.venv/
+__pycache__/
+*.pyc
+flask_session/
+uploads/
+*.db
+docs/
+Dockerfile
+compose.yaml
+.dockerignore

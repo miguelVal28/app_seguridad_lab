@@ -20,14 +20,20 @@ from flask import (
     render_template,
     request,
     session,
-    url_for,
+    url_for
 )
 
 from database import get_connection, init_db
 from flask_session import Session
+from rbac import RBAC, load_current_user
 from session_manager import login_required
 
+TODOS = ["estudiante", "docente", "admin"]
+DOCENTES = ["docente", "admin"]
 app = Flask(__name__)
+
+app.config["RBAC_USE_WHITE"] = True  # debe ir antes de RBAC(app)
+rbac = RBAC(app, user_loader=load_current_user)
 
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
@@ -40,7 +46,24 @@ UPLOAD_FOLDER = "uploads"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
+def redirigir_acceso_denegado():
+    # Sin sesion -> al login; con sesion pero sin rol suficiente -> pagina 403.
+    if "username" not in session:
+        return redirect(url_for("login"))
+    return redirect(url_for("acceso_denegado"))
+
+
+rbac.set_hook(redirigir_acceso_denegado)
+
+
+@app.route("/acceso-denegado")
+@rbac.allow(["anonymous"], methods=["GET"])
+def acceso_denegado():
+    return render_template("acceso_denegado.html"), 403
+
+
 @app.route("/")
+@rbac.allow(["anonymous"], methods=["GET"])
 def inicio():
     """Pagina de inicio con el banner del laboratorio."""
     return render_template("index.html", usuario=session.get("username"))
@@ -50,6 +73,7 @@ def inicio():
 # SQLi MITIGADA: consulta parametrizada en el login
 # ======================================================================
 @app.route("/login", methods=["GET", "POST"])
+@rbac.allow(["anonymous"], methods=["GET", "POST"])
 def login():
     """Inicio de sesion con consulta parametrizada."""
     error = None
@@ -71,6 +95,7 @@ def login():
         if fila:
             session["username"] = fila["username"]
             session["rol"] = fila["rol"]
+            session["estudiante_id"] = fila["estudiante_id"]
             return redirect(url_for("inicio"))
         error = "Credenciales invalidas"
 
@@ -78,6 +103,7 @@ def login():
 
 
 @app.route("/logout")
+@rbac.allow(["anonymous"], methods=["GET"])
 def logout():
     session.clear()
     return redirect(url_for("inicio"))
@@ -87,6 +113,7 @@ def logout():
 # SQLi MITIGADA: consulta parametrizada en el buscador de estudiantes
 # ======================================================================
 @app.route("/buscar")
+@rbac.allow(TODOS, methods=["GET"])
 @login_required
 def buscar():
     """Buscador de estudiantes con consulta parametrizada."""
@@ -111,7 +138,8 @@ def buscar():
 # ======================================================================
 # VULNERABILIDAD 2: CROSS-SITE SCRIPTING (XSS) ALMACENADO
 # ======================================================================
-@app.route("/perfil/<int:user_id>", methods=["GET", "POST"])
+@app.route("/perfil/<int:user_id>")
+@rbac.allow(TODOS, methods=["GET"])
 @login_required
 def perfil(user_id):
     """Muestra el perfil de un estudiante SIN escapar la biografia."""
@@ -131,9 +159,13 @@ def perfil(user_id):
 
 
 @app.route("/perfil/<int:id>/editar", methods=["GET", "POST"])
+@rbac.allow(TODOS, methods=["GET", "POST"])
 @login_required
 def editar_biografia(id):
     """Permite editar la biografia (fuente del XSS almacenado)."""
+    # Un estudiante solo puede editar su propia biografia.
+    if session.get("rol") == "estudiante" and session.get("estudiante_id") != id:
+        return redirect(url_for("acceso_denegado"))
     conn = get_connection()
     cur = conn.cursor()
     if request.method == "POST":
@@ -144,7 +176,7 @@ def editar_biografia(id):
         )
         conn.commit()
         conn.close()
-        return redirect(url_for("perfil", id=id))
+        return redirect(url_for("perfil", user_id=id))
     cur.execute("SELECT * FROM estudiantes WHERE id = ?", (id,))
     estudiante = cur.fetchone()
     conn.close()
@@ -155,6 +187,7 @@ def editar_biografia(id):
 # VULNERABILIDAD 3: CONTROL DE ACCESO ROTO (IDOR)
 # ======================================================================
 @app.route("/nota/editar/<int:id>", methods=["GET", "POST"])
+@rbac.allow(DOCENTES, methods=["GET", "POST"])
 @login_required
 def editar_nota(id):
     """
@@ -185,6 +218,7 @@ def editar_nota(id):
 # VULNERABILIDAD 4: CARGA DE ARCHIVOS SIN RESTRICCION
 # ======================================================================
 @app.route("/subir", methods=["GET", "POST"])
+@rbac.allow(TODOS, methods=["GET", "POST"])
 @login_required
 def subir():
     """Sube un archivo SIN validar extension ni tipo -> permite .py, .php, etc."""
@@ -214,4 +248,4 @@ if __name__ == "__main__":
     if not os.path.exists("academia.db"):
         init_db()
     # debug=True tambien es una mala practica en produccion (expone la consola)
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000)

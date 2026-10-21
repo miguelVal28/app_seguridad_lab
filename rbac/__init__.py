@@ -1,4 +1,9 @@
+import flask
 from flask import session
+
+if not hasattr(flask, "_request_ctx_stack"):
+    flask._request_ctx_stack = None
+
 from flask_rbac import RoleMixin, UserMixin  # noqa: E402
 
 from rbac.compat import RBAC

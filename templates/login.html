@@ -6,11 +6,12 @@
         <p class="error">{{ error }}</p>
     {% endif %}
     <form method="POST" action="{{ url_for('login') }}">
+        <input name="csrf_token" type="hidden" value="{{ csrf_token() }}">
         <label>Usuario:
             <input type="text" name="username" autocomplete="off">
         </label>
         <label>Contrasena:
-            <input type="text" name="password" autocomplete="off">
+            <input autocomplete="off" name="password" type="password">
         </label>
         <button type="submit">Entrar</button>
     </form>

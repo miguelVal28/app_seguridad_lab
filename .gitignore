@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 flask_session/
 *.db
+*.db.bak
+.secret_key

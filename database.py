@@ -34,12 +34,10 @@ def init_db():
     cur.execute(
         """
         CREATE TABLE usuarios (
-                                  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                                  username      TEXT NOT NULL,
-                                  password      TEXT NOT NULL, -- MALA PRACTICA: contrasena en texto plano
-                                  rol           TEXT NOT NULL, -- admin | docente | estudiante
-                                  estudiante_id INTEGER,       -- solo para rol estudiante
-                                  FOREIGN KEY (estudiante_id) REFERENCES estudiantes (id)
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL,   -- MALA PRACTICA: contrasena en texto plano
+            rol      TEXT NOT NULL    -- admin | docente | estudiante
         )
         """
     )
@@ -92,13 +90,12 @@ def init_db():
     # (mala practica deliberada para demostrar en clase)
     # ------------------------------------------------------------------
     usuarios = [
-        ("admin", "admin123", "admin", None),  # profesor administrador
-        ("profesor", "clave456", "docente", None),  # profesor estandar
-        ("estudiante", "1234", "estudiante", 1),  # estudiante (Ana Torres)
+        ("admin", "admin123", "admin"),        # profesor administrador
+        ("profesor", "clave456", "docente"),   # profesor estandar
+        ("estudiante", "1234", "estudiante"),  # estudiante
     ]
     cur.executemany(
-        "INSERT INTO usuarios (username, password, rol, estudiante_id) "
-        "VALUES (?, ?, ?, ?)",
+        "INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)",
         usuarios,
     )
 

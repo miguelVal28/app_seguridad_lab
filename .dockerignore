@@ -1,0 +1,13 @@
+.git/
+.idea/
+.venv/
+__pycache__/
+*.pyc
+flask_session/
+uploads/
+*.db
+.secret_key
+docs/
+Dockerfile
+compose.yaml
+.dockerignore

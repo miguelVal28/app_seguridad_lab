@@ -1,11 +1,13 @@
+import flask
 from flask import session
+
+if not hasattr(flask, "_request_ctx_stack"):
+    flask._request_ctx_stack = None
+
 from flask_rbac import RoleMixin, UserMixin  # noqa: E402
 
-# compat debe importarse antes que flask_rbac (parchea el import roto).
 from rbac.compat import RBAC
 
-# "anonymous" no se declara aqui: Flask-RBAC ya define ese rol y lo
-# aplica automaticamente cuando el user loader devuelve None.
 ROLES = {nombre: RoleMixin(nombre) for nombre in ("estudiante", "docente", "admin")}
 
 

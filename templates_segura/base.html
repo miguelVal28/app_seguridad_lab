@@ -2,27 +2,30 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Gestion Academica{% endblock %}</title>
-    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div class="banner-alerta">
-    ENTORNO INTENCIONALMENTE VULNERABLE - SOLO USO EDUCATIVO (LOCALHOST)
-</div>
-<nav class="menu">
-    <a href="{{ url_for('inicio') }}">Inicio</a>
-    <a href="{{ url_for('buscar') }}">Buscar</a>
-    <a href="{{ url_for('subir') }}">Subir archivo</a>
-    {% if session.get('username') %}
-    <span class="usuario">{{ session.get('username') }} ({{ session.get('rol') }})</span>
-    <a href="{{ url_for('logout') }}">Salir</a>
-    {% else %}
-    <a href="{{ url_for('login') }}">Iniciar sesion</a>
-    {% endif %}
-</nav>
-<main class="contenido">
-    {% block contenido %}{% endblock %}
-</main>
+    <div class="banner-alerta">
+        ENTORNO DE LABORATORIO - SEGUIMIENTO DE SEGURIDAD
+    </div>
+    <nav class="menu">
+        <a href="{{ url_for('inicio') }}">Inicio</a>
+        <a href="{{ url_for('buscar') }}">Buscar</a>
+        <a href="{{ url_for('subir') }}">Subir archivo</a>
+        {% if session.get('username') %}
+            <span class="usuario">{{ session.get('username') }} ({{ session.get('rol') }})</span>
+        <form action="{{ url_for('logout') }}" method="POST" style="display:inline;">
+            <input name="csrf_token" type="hidden" value="{{ csrf_token() }}">
+            <button class="link-button" type="submit">Salir</button>
+        </form>
+        {% else %}
+            <a href="{{ url_for('login') }}">Iniciar sesion</a>
+        {% endif %}
+    </nav>
+    <main class="contenido">
+        {% block contenido %}{% endblock %}
+    </main>
 </body>
 </html>

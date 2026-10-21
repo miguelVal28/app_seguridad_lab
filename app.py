@@ -3,8 +3,8 @@ app.py  -  VERSION INTENCIONALMENTE VULNERABLE
 ==============================================
 Sistema de Gestion Academica para el laboratorio de S-SDLC.
 
-Estado de las vulnerabilidades del laboratorio:
-  1. Inyeccion SQL (SQLi) mitigada   -> /login y /buscar parametrizados
+Este archivo contiene, A PROPOSITO, las 4 vulnerabilidades clasicas:
+  1. Inyeccion SQL (SQLi)            -> /login y /buscar
   2. Cross-Site Scripting (XSS)      -> /perfil/<id>
   3. Control de acceso roto (IDOR)   -> /nota/editar/<id>
   4. Carga de archivos sin restriccion -> /subir
@@ -20,62 +20,30 @@ from flask import (
     render_template,
     request,
     session,
-    url_for
+    url_for,
 )
 
 from database import get_connection, init_db
-from flask_session import Session
-from rbac import RBAC, load_current_user
-from session_manager import login_required
 
-TODOS = ["estudiante", "docente", "admin"]
-DOCENTES = ["docente", "admin"]
 app = Flask(__name__)
-
-app.config["RBAC_USE_WHITE"] = True  # debe ir antes de RBAC(app)
-rbac = RBAC(app, user_loader=load_current_user)
-
-app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_TYPE"] = "filesystem"
-
-Session(app)
-
 app.secret_key = "clave-insegura-de-laboratorio"  # MALA PRACTICA: clave debil y fija
 
 UPLOAD_FOLDER = "uploads"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
-def redirigir_acceso_denegado():
-    # Sin sesion -> al login; con sesion pero sin rol suficiente -> pagina 403.
-    if "username" not in session:
-        return redirect(url_for("login"))
-    return redirect(url_for("acceso_denegado"))
-
-
-rbac.set_hook(redirigir_acceso_denegado)
-
-
-@app.route("/acceso-denegado")
-@rbac.allow(["anonymous"], methods=["GET"])
-def acceso_denegado():
-    return render_template("acceso_denegado.html"), 403
-
-
 @app.route("/")
-@rbac.allow(["anonymous"], methods=["GET"])
 def inicio():
     """Pagina de inicio con el banner del laboratorio."""
     return render_template("index.html", usuario=session.get("username"))
 
 
 # ======================================================================
-# SQLi MITIGADA: consulta parametrizada en el login
+# VULNERABILIDAD 1: INYECCION SQL (SQLi)
 # ======================================================================
 @app.route("/login", methods=["GET", "POST"])
-@rbac.allow(["anonymous"], methods=["GET", "POST"])
 def login():
-    """Inicio de sesion con consulta parametrizada."""
+    """Inicio de sesion vulnerable a inyeccion SQL."""
     error = None
     if request.method == "POST":
         usuario = request.form.get("username", "")
@@ -84,18 +52,24 @@ def login():
         conn = get_connection()
         cur = conn.cursor()
 
-        # Los parametros se interpretan como datos, no como codigo SQL.
-        cur.execute(
-            "SELECT * FROM usuarios WHERE username = ? AND password = ?",
-            (usuario, clave),
+        # VULNERABLE: la consulta se construye concatenando la entrada del
+        # usuario directamente. Un atacante puede escribir:  admin' --
+        # o tambien:  ' OR '1'='1
+        query = (
+                "SELECT * FROM usuarios WHERE username = '"
+                + usuario
+                + "' AND password = '"
+                + clave
+                + "'"
         )
+        print("SQL ejecutado:", query)  # para que el estudiante vea la inyeccion
+        cur.execute(query)
         fila = cur.fetchone()
         conn.close()
 
         if fila:
             session["username"] = fila["username"]
             session["rol"] = fila["rol"]
-            session["estudiante_id"] = fila["estudiante_id"]
             return redirect(url_for("inicio"))
         error = "Credenciales invalidas"
 
@@ -103,52 +77,50 @@ def login():
 
 
 @app.route("/logout")
-@rbac.allow(["anonymous"], methods=["GET"])
 def logout():
     session.clear()
     return redirect(url_for("inicio"))
 
 
 # ======================================================================
-# SQLi MITIGADA: consulta parametrizada en el buscador de estudiantes
+# VULNERABILIDAD 1 (variante): SQLi en el buscador de estudiantes
 # ======================================================================
 @app.route("/buscar")
-@rbac.allow(TODOS, methods=["GET"])
-@login_required
 def buscar():
-    """Buscador de estudiantes con consulta parametrizada."""
+    """Buscador de estudiantes vulnerable a inyeccion SQL."""
     termino = request.args.get("q", "")
     resultados = []
+    query = ""
     if termino:
         conn = get_connection()
         cur = conn.cursor()
-        # El patron LIKE se pasa como parametro separado de la consulta.
+        # VULNERABLE: se concatena el termino de busqueda en la consulta.
+        # Ejemplo de ataque con UNION para extraer usuarios y contrasenas:
+        #   ' UNION SELECT id, username, password, rol FROM usuarios --
         query = (
             "SELECT id, nombre, carrera, biografia FROM estudiantes "
-            "WHERE nombre LIKE ?"
+            "WHERE nombre LIKE '%" + termino + "%'"
         )
-        cur.execute(query, (f"%{termino}%",))
+        print("SQL ejecutado:", query)
+        cur.execute(query)
         resultados = cur.fetchall()
         conn.close()
     return render_template(
-        "buscar.html", resultados=resultados, termino=termino
+        "buscar.html", resultados=resultados, termino=termino, query=query
     )
 
 
 # ======================================================================
 # VULNERABILIDAD 2: CROSS-SITE SCRIPTING (XSS) ALMACENADO
 # ======================================================================
-@app.route("/perfil/<int:user_id>")
-@rbac.allow(TODOS, methods=["GET"])
-@login_required
-def perfil(user_id):
+@app.route("/perfil/<int:id>")
+def perfil(id):
     """Muestra el perfil de un estudiante SIN escapar la biografia."""
-
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM estudiantes WHERE id = ?", (user_id,))
+    cur.execute("SELECT * FROM estudiantes WHERE id = ?", (id,))
     estudiante = cur.fetchone()
-    cur.execute("SELECT * FROM calificaciones WHERE estudiante_id = ?", (user_id,))
+    cur.execute("SELECT * FROM calificaciones WHERE estudiante_id = ?", (id,))
     notas = cur.fetchall()
     conn.close()
     if not estudiante:
@@ -159,13 +131,8 @@ def perfil(user_id):
 
 
 @app.route("/perfil/<int:id>/editar", methods=["GET", "POST"])
-@rbac.allow(TODOS, methods=["GET", "POST"])
-@login_required
 def editar_biografia(id):
     """Permite editar la biografia (fuente del XSS almacenado)."""
-    # Un estudiante solo puede editar su propia biografia.
-    if session.get("rol") == "estudiante" and session.get("estudiante_id") != id:
-        return redirect(url_for("acceso_denegado"))
     conn = get_connection()
     cur = conn.cursor()
     if request.method == "POST":
@@ -176,7 +143,7 @@ def editar_biografia(id):
         )
         conn.commit()
         conn.close()
-        return redirect(url_for("perfil", user_id=id))
+        return redirect(url_for("perfil", id=id))
     cur.execute("SELECT * FROM estudiantes WHERE id = ?", (id,))
     estudiante = cur.fetchone()
     conn.close()
@@ -187,8 +154,6 @@ def editar_biografia(id):
 # VULNERABILIDAD 3: CONTROL DE ACCESO ROTO (IDOR)
 # ======================================================================
 @app.route("/nota/editar/<int:id>", methods=["GET", "POST"])
-@rbac.allow(DOCENTES, methods=["GET", "POST"])
-@login_required
 def editar_nota(id):
     """
     Edita una calificacion identificada por su ID en la URL.
@@ -218,8 +183,6 @@ def editar_nota(id):
 # VULNERABILIDAD 4: CARGA DE ARCHIVOS SIN RESTRICCION
 # ======================================================================
 @app.route("/subir", methods=["GET", "POST"])
-@rbac.allow(TODOS, methods=["GET", "POST"])
-@login_required
 def subir():
     """Sube un archivo SIN validar extension ni tipo -> permite .py, .php, etc."""
     mensaje = None
@@ -248,4 +211,4 @@ if __name__ == "__main__":
     if not os.path.exists("academia.db"):
         init_db()
     # debug=True tambien es una mala practica en produccion (expone la consola)
-    app.run(host="127.0.0.1", port=5000)
+    app.run(host="127.0.0.1", port=5000, debug=True)

@@ -1,14 +1,7 @@
 """
-compat.py
----------
 Adaptador para usar Flask-RBAC 0.5.0 (ultima version publicada) con Flask 3.
 
-Flask-RBAC depende de dos APIs que Flask elimino en la version 2.3:
-  - ``flask._request_ctx_stack``: se importa a nivel de modulo, por lo que
-    ``import flask_rbac`` falla con ImportError.
-  - ``app.before_first_request``: se usa en ``init_app`` para construir la ACL.
-
-Este modulo neutraliza el import y sobreescribe solo los dos metodos que
+Flask-RBAC depende de dos APIs que Flask elimino en la version 2.3. Este modulo neutraliza el import y sobreescribe solo los dos metodos que
 usaban esas APIs. El resto de la logica de la libreria no cambia.
 """
 

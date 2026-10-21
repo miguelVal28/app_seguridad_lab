@@ -8,7 +8,7 @@
 </head>
 <body>
     <div class="banner-alerta">
-        ENTORNO INTENCIONALMENTE VULNERABLE - SOLO USO EDUCATIVO (LOCALHOST)
+        ENTORNO DE LABORATORIO - SEGUIMIENTO DE SEGURIDAD
     </div>
     <nav class="menu">
         <a href="{{ url_for('inicio') }}">Inicio</a>
@@ -16,7 +16,10 @@
         <a href="{{ url_for('subir') }}">Subir archivo</a>
         {% if session.get('username') %}
             <span class="usuario">{{ session.get('username') }} ({{ session.get('rol') }})</span>
-            <a href="{{ url_for('logout') }}">Salir</a>
+            <form method="POST" action="{{ url_for('logout') }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="link-button">Salir</button>
+            </form>
         {% else %}
             <a href="{{ url_for('login') }}">Iniciar sesion</a>
         {% endif %}

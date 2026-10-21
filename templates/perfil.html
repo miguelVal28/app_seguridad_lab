@@ -5,9 +5,8 @@
     <p><strong>Carrera:</strong> {{ estudiante['carrera'] }}</p>
 
     <h2>Biografia</h2>
-<div class="biografia">
-    {{ estudiante['biografia'] or 'Sin biografía registrada' }}
-</div>
+<!-- VULNERABLE: "| safe" desactiva el escape de Jinja2 -> XSS almacenado -->
+<div class="biografia">{{ estudiante['biografia'] | safe }}</div>
 
     <p><a href="{{ url_for('editar_biografia', id=estudiante['id']) }}">Editar biografia</a></p>
 

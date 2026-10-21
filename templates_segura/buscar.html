@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Buscar estudiantes{% endblock %}
+{% block contenido %}
+<h1>Buscar estudiantes</h1>
+<form action="{{ url_for('buscar') }}" method="GET">
+    <input name="q" placeholder="Nombre del estudiante" type="text" value="{{ termino }}">
+    <button type="submit">Buscar</button>
+</form>
+
+{% if resultados %}
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Carrera</th>
+        <th>Biografia</th>
+        <th>Acciones</th>
+    </tr>
+    {% for r in resultados %}
+    <tr>
+        <td>{{ r[0] }}</td>
+        <td>{{ r[1] }}</td>
+        <td>{{ r[2] }}</td>
+        <td>{{ r[3] }}</td>
+        <td><a href="{{ url_for('perfil', user_id=r[0]) }}">Ver perfil</a></td>
+    </tr>
+    {% endfor %}
+</table>
+{% elif termino %}
+<p>Sin resultados.</p>
+{% endif %}
+{% endblock %}

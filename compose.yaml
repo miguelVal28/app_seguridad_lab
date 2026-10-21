@@ -9,6 +9,6 @@ services:
   # Version segura (app_segura.py)
   app_segura:
     build: .
-    command: sh -c "python database.py && flask --app app_segura run --host 0.0.0.0 --port 5001"
+    command: sh -c "python database_segura.py && flask --app app_segura run --host 0.0.0.0 --port 5001"
     ports:
       - "127.0.0.1:5001:5001"

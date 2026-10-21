@@ -6,7 +6,6 @@
         <p class="ok">{{ mensaje }}</p>
     {% endif %}
     <form method="POST" action="{{ url_for('subir') }}" enctype="multipart/form-data">
-        <input name="csrf_token" type="hidden" value="{{ csrf_token() }}">
         <input type="file" name="archivo">
         <button type="submit">Subir</button>
     </form>

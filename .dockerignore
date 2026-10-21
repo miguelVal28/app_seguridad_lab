@@ -6,6 +6,7 @@ __pycache__/
 flask_session/
 uploads/
 *.db
+.secret_key
 docs/
 Dockerfile
 compose.yaml
